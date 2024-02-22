@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import CursorChat from "./cursor/CursorChat";
 import { CursorMode, CursorState, Reaction } from "@/types/types";
 import ReactionSelector from "./reaction/ReactionButton";
+import FlyingReaction from "./reaction/FlyingReaction";
+import useInterval from "@/hooks/useInterval";
 
 const Live = () => {
 
@@ -14,7 +16,22 @@ const Live = () => {
     mode: CursorMode.Hidden,
   });
 
-  const [reactions, SetReactions] = useState<Reaction[]>([]);
+  const [reactions, setReactions] = useState<Reaction[]>([]);
+
+  useInterval(() => {
+    if (cursorState.mode === CursorMode.Reaction && cursorState.isPressed && cursor) {
+      // concat all the reactions created on mouse click
+      setReactions((reactions) =>
+        reactions.concat([
+          {
+            point: { x: cursor.x, y: cursor.y },
+            value: cursorState.reaction,
+            timestamp: Date.now(),
+          },
+        ])
+      );
+    }
+  }, 80);
 
   const handlePointerMove = useCallback((event: React.PointerEvent) => {
     event.preventDefault();
@@ -80,7 +97,7 @@ const Live = () => {
     }
   }, [updateMyPresence]);
 
-  const setReactions = useCallback((reaction: string) => {
+  const setReaction = useCallback((reaction: string) => {
     setCursorState({ mode: CursorMode.Reaction, reaction, isPressed: false });
   }, [])
 
@@ -94,6 +111,16 @@ const Live = () => {
     >
       <h1 className="text-2xl text-white">Next 14 Design Tool</h1>
 
+      {reactions.map((reaction) => (
+        <FlyingReaction
+          key={reaction.timestamp.toString()}
+          x={reaction.point.x}
+          y={reaction.point.y}
+          timestamp={reaction.timestamp}
+          value={reaction.value}
+        />
+      ))}
+
       {cursor && (
         <CursorChat
           cursor={cursor}
@@ -105,7 +132,7 @@ const Live = () => {
 
       {cursorState.mode === CursorMode.ReactionSelector && (
         <ReactionSelector
-          setReaction={setReactions}
+          setReaction={setReaction}
         />
       )}
       <LiveCursors others={others} />
